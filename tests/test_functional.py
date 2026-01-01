@@ -481,7 +481,7 @@ def f(b: bool):
                 msg_id="match-not-exhaustive",
                 line=3,
                 node=match_node,
-                args=(["bool"],),
+                args=([False, True],),
                 col_offset=4,
                 end_line=5,
                 end_col_offset=16,
@@ -502,13 +502,24 @@ def f(b: bool | None):
                 msg_id="match-not-exhaustive",
                 line=3,
                 node=match_node,
-                args=(["bool", None],),
+                args=([False, True, None],),
                 col_offset=4,
                 end_line=5,
                 end_col_offset=16,
             )
         ):
             self.checker.visit_match(match_node)
+
+    def test_bool_or_none_is_handled(self):
+        code = """
+def f(b: bool | None):
+    match b:
+        case True | False | None:
+            pass
+        """
+        match_node = self.get_match_node(code)
+        self.checker.visit_match(match_node)
+        assert len(self.linter.release_messages()) == 0
 
 
 class TestNoIfChecker(CheckerTestCase):

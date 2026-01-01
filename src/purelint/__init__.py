@@ -354,17 +354,25 @@ class ExhaustiveMatchChecker(BaseChecker):
                     for key_node, _ in members.items:
                         if isinstance(key_node, nodes.Const):
                             variants.add(key_node.value)
-                else:
+                elif hasattr(c, "name") and c.name == "bool":
                     # it's just a dataclass or a normal type
-                    variants.add(c.name if hasattr(c, "name") else annotation.name)
+                    variants.add(True)
+                    variants.add(False)
+                elif hasattr(c, "name"):
+                    variants.add(c.name)
+                else:
+                    raise ValueError("Something went wrong")
         elif isinstance(annotation, nodes.Const):
             # None for example
             variants.add(annotation.value)
 
         return variants
 
-    def _get_handled_variants(self, node: nodes.Match):
+    def _get_handled_variants(self, node: nodes.Match | nodes.MatchSingleton) -> set:
         handled = set()
+
+        if isinstance(node, nodes.MatchSingleton):
+            return {node.value}
 
         for case in node.cases:
             pat = case.pattern
@@ -375,6 +383,10 @@ class ExhaustiveMatchChecker(BaseChecker):
                 handled.add(pat.cls.name)
             elif isinstance(pat, nodes.MatchValue):
                 handled.add(pat.value.as_string().split(".")[-1])
+            elif isinstance(pat, nodes.MatchOr):
+                # case A() | B() for example
+                for subpat in pat.patterns:
+                    handled |= self._get_handled_variants(subpat)
 
         return handled
 
