@@ -45,7 +45,7 @@ and see what I can actually build.
       lambda t: delete(t, 5),  # delete 5
       inorder,  # get sorted tuple
   )
-```
+   ```
 
 
 ## Installing
