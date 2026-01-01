@@ -29,6 +29,12 @@ and see what I can actually build.
             case _:
                 assert_never(v)
     ```
+    Then run `mypy` on your code. It will give you an error if you're not checking all cases.
+- Variable rebinding
+- No augmented assignments
+- No mutable methods
+- No subscript assignment
+- No deletes
 
 
 ## Installing
