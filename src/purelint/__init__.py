@@ -3,11 +3,23 @@
 from functools import reduce
 from typing import TYPE_CHECKING, Callable
 
-from astroid import Uninferable, nodes
+from astroid import nodes
 from pylint.checkers import BaseChecker
 
 if TYPE_CHECKING:
+    from typing import NoReturn
+
     from pylint.lint import PyLinter
+
+
+def assert_never(value: "NoReturn") -> "NoReturn":
+    """This should never be called."""
+    assert False, f"Unknown value: {value}"
+
+
+def pipe(value, *funcs: Callable):
+    """Pass value through a pipeline of functions."""
+    return reduce(lambda acc, f: f(acc), funcs, value)
 
 
 class RebindChecker(BaseChecker):
@@ -322,8 +334,3 @@ def register(linter: "PyLinter") -> None:
         # NoIfChecker,
     ]:
         linter.register_checker(lint(linter))
-
-
-def pipe(value, *funcs: Callable):
-    """Pass value through a pipeline of functions."""
-    return reduce(lambda acc, f: f(acc), funcs, value)

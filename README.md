@@ -35,6 +35,17 @@ and see what I can actually build.
 - No mutable methods
 - No subscript assignment
 - No deletes
+- A `pipe` tool for immutable transformations on a data structure
+  For example:
+  ```python
+  # Define a transformation pipeline
+  sorted_after_deletes = pipe(
+      build_tree(values),  # start with tree
+      lambda t: delete(t, 2),  # delete 2
+      lambda t: delete(t, 5),  # delete 5
+      inorder,  # get sorted tuple
+  )
+```
 
 
 ## Installing
