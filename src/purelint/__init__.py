@@ -357,6 +357,9 @@ class ExhaustiveMatchChecker(BaseChecker):
                 else:
                     # it's just a dataclass or a normal type
                     variants.add(c.name if hasattr(c, "name") else annotation.name)
+        elif isinstance(annotation, nodes.Const):
+            # None for example
+            variants.add(annotation.value)
 
         return variants
 
