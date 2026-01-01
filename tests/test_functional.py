@@ -281,3 +281,71 @@ del lst
             )
         ):
             self.checker.visit_delete(del_node)
+
+
+class TestExchaustivenessChecker(CheckerTestCase):
+    CHECKER_CLASS = purelint.ExhaustiveMatchChecker
+
+    def get_match_node(self, code: str):
+        """Parse code and return the first Match node in the first function."""
+        module = astroid.parse(code)
+        # get the first function
+        func = next(n for n in module.body if isinstance(n, astroid.nodes.FunctionDef))
+        # find the first Match statement in function body
+        match_node = next(n for n in func.body if isinstance(n, astroid.nodes.Match))
+        return match_node
+
+    def test_enum_exhaustive(self):
+        code = """
+from enum import Enum
+
+class Color(Enum):
+    RED = 1
+    GREEN = 2
+    BLUE = 3
+
+def f(c: Color):
+    match c:
+        case Color.RED:
+            pass
+        case Color.GREEN:
+            pass
+            """
+        match_node = self.get_match_node(code)
+        with self.assertAddsMessages(
+            MessageTest(
+                msg_id="match-not-exhaustive",
+                line=10,
+                node=match_node,
+                args=(["BLUE"],),
+                col_offset=4,
+                end_line=14,
+                end_col_offset=16,
+            )
+        ):
+            self.checker.visit_match(match_node)
+
+    def test_union_exhaustive(self):
+        code = """
+from dataclasses import dataclass
+from typing import Union
+
+@dataclass(frozen=True)
+class Ok:
+    value: int
+
+@dataclasses(frozen=True)
+class Err:
+    msg: str
+
+Result = Union[Ok, Err]
+
+def handle(res: Result):
+    match res:
+        case Ok(value=v):
+            return v
+            """
+        # 'Err' is missing -> should trigger message
+        match_node = self.get_match_node(code)
+        with self.assertAddsMessages(MessageTest(msg_id="")):
+            self.checker.visit_match(match_node)  # first match

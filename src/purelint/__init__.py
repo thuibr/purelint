@@ -210,6 +210,116 @@ class NoDeleteChecker(BaseChecker):
                 self.add_message("delete-used", node=node, args=(target.as_string(),))
 
 
+class ExhaustiveMatchChecker(BaseChecker):
+    """All possible types must be checked in a 'match' statement."""
+
+    name = "exhaustiveness"
+
+    msgs = {
+        "E9008": (
+            "Not all values are handles: %s",
+            "match-not-exhaustive",
+            "Raised when a match statement doesn't handle all branches",
+        ),
+        "E9009": (
+            "No type annotation: %s",
+            "no-type-annoation",
+            "Raised when a match statement is run on a variable without a type annotation",
+        ),
+    }
+
+    def _get_subject_annotation(self, node: nodes.Match):
+        subject = node.subject
+        if not isinstance(subject, nodes.Name):
+            return None
+
+        var_name = subject.name
+        parent = node.parent
+
+        while parent and not isinstance(parent, nodes.FunctionDef):
+            parent = parent.parent
+
+        if parent is None:
+            return None
+
+        args = parent.args.args
+        annotations = parent.args.annotations
+
+        for arg, annotation in zip(args, annotations):
+            if arg.name == var_name:
+                return annotation
+
+        return None
+
+    def _enum_variants_from_class(self, cls: nodes.ClassDef) -> set[str]:
+        variants = set()
+
+        for stmt in cls.body:
+            if isinstance(stmt, nodes.Assign):
+                for target in stmt.targets:
+                    if isinstance(target, nodes.AssignName):
+                        variants.add(target.name)
+
+        return variants
+
+    def _get_variants(self, annotation):
+        # Union[Ok, Err]
+        if (
+            isinstance(annotation, nodes.Subscript)
+            and annotation.value.as_string() == "Union"
+        ):
+            breakpoint()
+            return {elt.as_string() for elt in annotation.slice.elts}
+
+        # Enum
+        if isinstance(annotation, nodes.Name):
+            scope, definitions = annotation.lookup(annotation.name)
+            if not definitions:
+                return set()
+
+            cls = definitions[0]
+            if not isinstance(cls, nodes.ClassDef):
+                return set()
+
+            return self._enum_variants_from_class(cls)
+
+        return set()
+
+    def _get_handled_variants(self, node: nodes.Match):
+        handled = set()
+
+        for case in node.cases:
+            pat = case.pattern
+
+            if isinstance(pat, nodes.MatchAs) and pat.name is None:
+                handled.add("_")  # wildcard
+            elif isinstance(pat, nodes.MatchClass):
+                handled.add(pat.cls.name)
+            elif isinstance(pat, nodes.MatchValue):
+                handled.add(pat.value.as_string().split(".")[-1])
+
+        return handled
+
+    def visit_match(self, node: nodes.Match):
+        annotation = self._get_subject_annotation(node)
+        if annotation is None:
+            return
+
+        variants = self._get_variants(annotation)
+        if not variants:
+            return
+
+        handled = self._get_handled_variants(node)
+
+        if "_" in handled:
+            # wildcard case (_) makes it exhaustive
+            return
+
+        missing = variants - handled
+        if missing:
+            self.add_message("match-not-exhaustive", node=node, args=(sorted(missing),))
+
+
 def register(linter: "PyLinter") -> None:
     linter.register_checker(RebindChecker(linter))
     linter.register_checker(NoAugAssignChecker(linter))
@@ -218,6 +328,7 @@ def register(linter: "PyLinter") -> None:
     linter.register_checker(NoMutableMethodChecker(linter))
     linter.register_checker(NoSubscriptAssignmentChecker(linter))
     linter.register_checker(NoDeleteChecker(linter))
+    linter.register_checker(ExhaustiveMatchChecker(linter))
 
 
 def pipe(value, *funcs: Callable):
