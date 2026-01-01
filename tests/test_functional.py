@@ -347,5 +347,15 @@ def handle(res: Result):
             """
         # 'Err' is missing -> should trigger message
         match_node = self.get_match_node(code)
-        with self.assertAddsMessages(MessageTest(msg_id="")):
+        with self.assertAddsMessages(
+            MessageTest(
+                msg_id="match-not-exhaustive",
+                line=16,
+                node=match_node,
+                args=(["Err"],),
+                col_offset=4,
+                end_line=18,
+                end_col_offset=20,
+            )
+        ):
             self.checker.visit_match(match_node)  # first match

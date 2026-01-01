@@ -251,6 +251,19 @@ class ExhaustiveMatchChecker(BaseChecker):
 
         return None
 
+    def _extract_union_variants(self, expr) -> set[str]:
+        # Union[Ok, Err]
+        if isinstance(expr, nodes.Subscript) and expr.value.as_string() == "Union":
+            return {elt.as_string() for elt in expr.slice.elts}
+
+        # Ok | Err (Pep 604)
+        if isinstance(expr, nodes.BinOp) and expr.op == "|":
+            return self._extract_union_variants(
+                expr.left
+            ) | self._extract_union_variants(expr.right)
+
+        return set()
+
     def _enum_variants_from_class(self, cls: nodes.ClassDef) -> set[str]:
         variants = set()
 
@@ -262,26 +275,37 @@ class ExhaustiveMatchChecker(BaseChecker):
 
         return variants
 
+    def _resolve_annotation_target(self, annotation: nodes.Name):
+        scope, defs = annotation.lookup(annotation.name)
+        if not defs:
+            return None
+
+        definition = defs[0]
+
+        if isinstance(definition, nodes.AssignName):
+            # Result = Union[...]
+            parent = definition.parent
+            if isinstance(parent, nodes.Assign):
+                return parent.value
+
+        if isinstance(definition, nodes.ClassDef):
+            return definition
+
+        return None
+
     def _get_variants(self, annotation):
-        # Union[Ok, Err]
-        if (
-            isinstance(annotation, nodes.Subscript)
-            and annotation.value.as_string() == "Union"
-        ):
-            breakpoint()
-            return {elt.as_string() for elt in annotation.slice.elts}
-
-        # Enum
         if isinstance(annotation, nodes.Name):
-            scope, definitions = annotation.lookup(annotation.name)
-            if not definitions:
+            target = self._resolve_annotation_target(annotation)
+            if target is None:
                 return set()
 
-            cls = definitions[0]
-            if not isinstance(cls, nodes.ClassDef):
-                return set()
+            if isinstance(target, (nodes.Subscript, nodes.BinOp)):
+                # Union / Result alias
+                return self._extract_union_variants(target)
 
-            return self._enum_variants_from_class(cls)
+            if isinstance(target, nodes.ClassDef):
+                # Enum
+                return self._enum_variants_from_class(target)
 
         return set()
 
