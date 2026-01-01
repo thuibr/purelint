@@ -408,7 +408,7 @@ def register(linter: "PyLinter") -> None:
     for lint in [
         RebindChecker,
         NoAugAssignChecker,
-        NoSideEffectChecker,
+        # NoSideEffectChecker,
         # NoMutableLiteralChecker,
         NoMutableMethodChecker,
         NoSubscriptAssignmentChecker,
