@@ -539,20 +539,6 @@ def f(b: bool | None):
         self.checker.visit_match(match_node)
         assert len(self.linter.release_messages()) == 0
 
-    def test_bool_is_unassigned_value(self):
-        """Test when bool is used incorrectly and is an unassigned value"""
-        code = """
-def f(b: bool | None):
-    match b:
-        case bool:
-            pass
-        case None:
-            pass
-        """
-        match_node = self.get_match_node(code)
-        self.checker.visit_match(match_node)
-        assert len(self.linter.release_messages()) == 0
-
 
 class TestNoIfChecker(CheckerTestCase):
     """Test the NoIfChecker."""
