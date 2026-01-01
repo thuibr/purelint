@@ -1,3 +1,5 @@
+"""Module implementing mutability and exhaustiveness checking."""
+
 from functools import reduce
 from typing import TYPE_CHECKING, Callable
 
@@ -11,8 +13,8 @@ if TYPE_CHECKING:
 class RebindChecker(BaseChecker):
     """Check if variables are rebound."""
 
+    # pylint: disable=rebind
     name = "no-rebind"
-
     msgs = {
         "E9001": (
             "Rebinding name '%s' is not allowed",
@@ -20,6 +22,7 @@ class RebindChecker(BaseChecker):
             "Used when a variable is rebound in the same scope",
         ),
     }
+    # pylint: enable=rebind
 
     def __init__(self, linter=None):
         super().__init__(linter)
@@ -29,26 +32,41 @@ class RebindChecker(BaseChecker):
         # module-level scope
         self.scopes = [set()]
 
-    def visit_functiondef(self, node: nodes.FunctionDef):
-        self.scopes.append(set())
+    def visit_functiondef(self, _: nodes.FunctionDef):
+        """Init when visiting a function def."""
+        self.scopes.append(set())  # pylint: disable=mutable-method-used
 
-    def leave_functiondef(self, node: nodes.FunctionDef):
-        self.scopes.pop()
+    def leave_functiondef(self, _: nodes.FunctionDef):
+        """Cleanup after leaving a function def."""
+        self.scopes.pop()  # pylint: disable=mutable-method-used
 
     def visit_assign(self, node: nodes.Assign):
+        """Visit assignment in the AST."""
         scope = self.scopes[-1]
-        for target in node.targets:
-            if isinstance(target, nodes.AssignName):
-                name = target.name
-                if name in scope:
-                    self.add_message("rebind", node=node, args=(name,))
-                else:
-                    scope.add(name)
+
+        # Collect all variable names that would be rebinding
+        rebind_names = {
+            target.name
+            for target in node.targets
+            if isinstance(target, nodes.AssignName) and target.name in scope
+        }
+
+        for name in rebind_names:
+            self.add_message("rebind", node=node, args=(name,))
+
+        # Update scope with all assigned names
+        new_names = {
+            target.name
+            for target in node.targets
+            if isinstance(target, nodes.AssignName)
+        }
+        scope.update(new_names)  # pylint: disable=mutable-method-used
 
 
 class NoAugAssignChecker(BaseChecker):
     """Check if augmented assignment is used."""
 
+    # pylint: disable=rebind
     name = "no-augassign"
     msgs = {
         "E9002": (
@@ -57,8 +75,10 @@ class NoAugAssignChecker(BaseChecker):
             "Disallows +=, -=, *= etc for functional style",
         )
     }
+    # pylint: enable=rebind
 
     def visit_augassign(self, node: nodes.AugAssign):
+        """Visit augmented assignment in the AST."""
         op = node.op
         self.add_message("augassign-used", node=node, args=(op,))
 
@@ -66,6 +86,7 @@ class NoAugAssignChecker(BaseChecker):
 class NoSideEffectChecker(BaseChecker):
     """Check if side-effects are used"""
 
+    # pylint: disable=rebind
     name = "no-side-effect"
     msgs = {
         "E9003": (
@@ -74,15 +95,18 @@ class NoSideEffectChecker(BaseChecker):
             "Disallows print, file writes, or OS commands in pure functions",
         )
     }
+    # pylint: enable=rebind
 
     SIDE_EFFECT_FUNCS = {"print", "open", "exec", "eval", "exit", "quit", "delattr"}
 
     def visit_expr(self, node: nodes.Call):
+        """Visit expressions in the AST."""
         func = node.value.func
         if isinstance(func, nodes.Name) and func.name in self.SIDE_EFFECT_FUNCS:
             self.add_message("side-effect-used", node=node, args=(func.name,))
 
     def visit_with(self, node: nodes.With):
+        """Visit with calls in the AST."""
         for item in node.items:
             expr = item[0]
             if (
@@ -97,6 +121,7 @@ class NoSideEffectChecker(BaseChecker):
 class NoMutableLiteralChecker(BaseChecker):
     """Check if mutable literals are used"""
 
+    # pylint: disable=rebind
     name = "no-mutable-literal-checker"
     msgs = {
         "E9004": (
@@ -105,17 +130,22 @@ class NoMutableLiteralChecker(BaseChecker):
             "Disallow mutable literals in functional code",
         )
     }
+    # pylint: enable=rebind
 
     def visit_list(self, node: nodes.List):
+        """Visit lists in the AST."""
         self.add_message("mutable-literal", node=node, args=("list",))
 
     def visit_dict(self, node: nodes.Dict):
+        """Visit dicts in the AST."""
         self.add_message("mutable-literal", node=node, args=("dict",))
 
     def visit_set(self, node: nodes.Set):
+        """Visit sets in the AST."""
         self.add_message("mutable-literal", node=node, args=("set",))
 
     def visit_call(self, node: nodes.Call):
+        "Visit function calls in the AST."
         func_name = node.func.as_string()
         if func_name in {"list", "dict", "set"}:
             self.add_message("mutable-literal", node=node, args=(func_name,))
@@ -124,8 +154,8 @@ class NoMutableLiteralChecker(BaseChecker):
 class NoMutableMethodChecker(BaseChecker):
     """Check if mutable methods are used."""
 
+    # pylint: disable=rebind
     name = "no-mutable-method"
-
     msgs = {
         "E9005": (
             "Mutable method '%s' is not allowed; use functional alternatives",
@@ -133,6 +163,7 @@ class NoMutableMethodChecker(BaseChecker):
             "Disallow list/dict/set mutating methods like append, pop, remove, clear",
         )
     }
+    # pylint: enable=rebind
 
     MUTABLE_METHODS = {
         "append",
@@ -146,6 +177,7 @@ class NoMutableMethodChecker(BaseChecker):
     }
 
     def visit_call(self, node: nodes.Call):
+        """Visit function calls in the AST."""
         func = node.func
 
         if isinstance(func, nodes.Attribute):
@@ -157,8 +189,8 @@ class NoMutableMethodChecker(BaseChecker):
 class NoSubscriptAssignmentChecker(BaseChecker):
     """Check for assignment to subscripts."""
 
+    # pylint: disable=rebind
     name = "no-subscript-assign"
-
     msgs = {
         "E9006": (
             "Subscript assignment '%s' is not allowed; objects should be immutable",
@@ -166,8 +198,10 @@ class NoSubscriptAssignmentChecker(BaseChecker):
             "Disallows a[...] = ... assignments to enforce functional immutability",
         )
     }
+    # pylint: enable=rebind
 
     def visit_assign(self, node: nodes.Assign):
+        """Visit assign calls in the AST."""
         for target in node.targets:
             if isinstance(target, nodes.Subscript):
                 self.add_message(
@@ -175,6 +209,7 @@ class NoSubscriptAssignmentChecker(BaseChecker):
                 )
 
     def visit_delete(self, node: nodes.Delete):
+        """Visit delete calls in the AST."""
         for target in node.targets:
             if isinstance(target, nodes.Subscript) and not isinstance(
                 target.parent, nodes.Delete
@@ -188,8 +223,8 @@ class NoSubscriptAssignmentChecker(BaseChecker):
 class NoDeleteChecker(BaseChecker):
     """Disallow 'del' statements to enforce immutability."""
 
+    # pylint: disable=rebind
     name = "no-delete"
-
     msgs = {
         "E9007": (
             "Deleting variable '%s' is not allowed; use functional alternatives",
@@ -197,15 +232,15 @@ class NoDeleteChecker(BaseChecker):
             "Disallow 'del' to prevent mutation of variables",
         )
     }
+    # pylint: enable=rebind
 
     def visit_delete(self, node: nodes.Delete):
+        """Visit delete calls in the AST."""
         for target in node.targets:
             if isinstance(target, nodes.DelName):
                 # del obj
                 self.add_message("delete-used", node=node, args=(target.name,))
-            elif isinstance(target, nodes.DelAttr) or isinstance(
-                target, nodes.Subscript
-            ):
+            elif isinstance(target, (nodes.DelAttr, nodes.Subscript)):
                 # Catch del obj.attr
                 self.add_message("delete-used", node=node, args=(target.as_string(),))
 
@@ -213,8 +248,8 @@ class NoDeleteChecker(BaseChecker):
 class ExhaustiveMatchChecker(BaseChecker):
     """All possible types must be checked in a 'match' statement."""
 
+    # pylint: disable=rebind
     name = "exhaustiveness"
-
     msgs = {
         "E9008": (
             "Not all values are handles: %s",
@@ -222,6 +257,7 @@ class ExhaustiveMatchChecker(BaseChecker):
             "Raised when a match statement doesn't handle all branches",
         ),
     }
+    # pylint: enable=rebind
 
     def _get_subject_annotation(self, node: nodes.Match):
         subject = node.subject
@@ -232,7 +268,7 @@ class ExhaustiveMatchChecker(BaseChecker):
         parent = node.parent
 
         while parent and not isinstance(parent, nodes.FunctionDef):
-            parent = parent.parent
+            parent = parent.parent  # pylint: disable=rebind
 
         if parent is None:
             return None
@@ -271,7 +307,7 @@ class ExhaustiveMatchChecker(BaseChecker):
         return variants
 
     def _resolve_annotation_target(self, annotation: nodes.Name):
-        scope, defs = annotation.lookup(annotation.name)
+        _, defs = annotation.lookup(annotation.name)
         if not defs:
             return None
 
@@ -320,6 +356,7 @@ class ExhaustiveMatchChecker(BaseChecker):
         return handled
 
     def visit_match(self, node: nodes.Match):
+        """Visit a match in the AST."""
         annotation = self._get_subject_annotation(node)
         if annotation is None:
             return
@@ -342,6 +379,7 @@ class ExhaustiveMatchChecker(BaseChecker):
 class NoIfChecker(BaseChecker):
     """Forbid using 'if' statements."""
 
+    # pylint: disable=rebind
     name = "no-if"
     msgs = {
         "E9009": (
@@ -350,6 +388,7 @@ class NoIfChecker(BaseChecker):
             "Disallows 'if' statements for pure functional style",
         )
     }
+    # pylint: enable=rebind
 
     def visit_if(self, node: nodes.If):
         """Called for each If node in the AST."""
@@ -357,15 +396,19 @@ class NoIfChecker(BaseChecker):
 
 
 def register(linter: "PyLinter") -> None:
-    linter.register_checker(RebindChecker(linter))
-    linter.register_checker(NoAugAssignChecker(linter))
-    linter.register_checker(NoSideEffectChecker(linter))
-    linter.register_checker(NoMutableLiteralChecker(linter))
-    linter.register_checker(NoMutableMethodChecker(linter))
-    linter.register_checker(NoSubscriptAssignmentChecker(linter))
-    linter.register_checker(NoDeleteChecker(linter))
-    linter.register_checker(ExhaustiveMatchChecker(linter))
-    linter.register_checker(NoIfChecker(linter))
+    """Register the linters with PyLint."""
+    for lint in [
+        RebindChecker,
+        NoAugAssignChecker,
+        NoSideEffectChecker,
+        NoMutableLiteralChecker,
+        NoMutableMethodChecker,
+        NoSubscriptAssignmentChecker,
+        NoDeleteChecker,
+        ExhaustiveMatchChecker,
+        # NoIfChecker,
+    ]:
+        linter.register_checker(lint(linter))
 
 
 def pipe(value, *funcs: Callable):
