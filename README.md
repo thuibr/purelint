@@ -5,6 +5,10 @@ I have been learning Haskell and Gleam, but those are not languages that I use i
 The motivation behind this project is to see how far I can get adding functional constraints to Python
 and see what I can actually build.
 
+## Features
+
+- `match` exhaustiveness checker
+
 
 ## Installing
 

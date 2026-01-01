@@ -1,7 +1,6 @@
 """Functional tests."""
 
 import astroid
-from astroid import Uninferable
 from pylint.testutils import CheckerTestCase, MessageTest
 
 import purelint
@@ -340,9 +339,7 @@ class Color(Enum):
 
 def f(c: Color):
     match c:
-        case Color.RED:
-            pass
-        case Color.GREEN:
+        case E.RED():
             pass
             """
         match_node = self.get_match_node(code)
@@ -351,211 +348,9 @@ def f(c: Color):
                 msg_id="match-not-exhaustive",
                 line=10,
                 node=match_node,
-                args=(["BLUE"],),
+                args=("_",),
                 col_offset=4,
-                end_line=14,
-                end_col_offset=16,
-            )
-        ):
-            self.checker.visit_match(match_node)
-
-    def test_union_exhaustive(self):
-        """Test that all values in a union are checked in a match"""
-        code = """
-from dataclasses import dataclass
-from typing import Union
-
-@dataclass(frozen=True)
-class Ok:
-    value: int
-
-@dataclasses(frozen=True)
-class Err:
-    msg: str
-
-Result = Union[Ok, Err]
-
-def handle(res: Result):
-    match res:
-        case Ok(value=v):
-            return v
-            """
-        # 'Err' is missing -> should trigger message
-        match_node = self.get_match_node(code)
-        with self.assertAddsMessages(
-            MessageTest(
-                msg_id="match-not-exhaustive",
-                line=16,
-                node=match_node,
-                args=(["Union"],),
-                col_offset=4,
-                end_line=18,
-                end_col_offset=20,
-            )
-        ):
-            self.checker.visit_match(match_node)  # first match
-
-    def test_union_and_enum_exhaustive(self):
-        """Test that union and enum are exhaustive."""
-        code = """
-    from enum import Enum
-    from dataclasses import dataclass
-    from typing import Union
-
-    class Color(Enum):
-        RED = 1
-        GREEN = 2
-        BLUE = 3
-
-    @dataclass(frozen=True)
-    class Ok:
-        value: int
-
-    @dataclass(frozen=True)
-    class Err:
-        msg: str
-
-    Result = Union[Ok, Err]
-
-    def handle(res: Result | Color):
-        match res:
-            case Ok(value=v):
-                return v
-    """
-        match_node = self.get_match_node(code)
-        with self.assertAddsMessages(
-            MessageTest(
-                msg_id="match-not-exhaustive",
-                line=22,
-                node=match_node,
-                args=(["BLUE", "GREEN", "RED", "Union"],),
-                col_offset=4,
-                end_line=24,
-                end_col_offset=20,
-            )
-        ):
-            self.checker.visit_match(match_node)
-
-    def test_union_and_enum_exhaustive2(self):
-        """Test again."""
-        code = """
-from enum import Enum
-
-
-class E(Enum):
-
-    RED = auto()
-    GREEN = auto()
-
-
-def f_taker(f: E | None):
-    match f:
-        case E.RED:
-            print("hi")
-        case E.GREEN:
-            print("hi")
-        """
-        match_node = self.get_match_node(code)
-        with self.assertAddsMessages(
-            MessageTest(
-                msg_id="match-not-exhaustive",
-                line=12,
-                node=match_node,
-                args=([None],),
-                col_offset=4,
-                end_line=16,
-                end_col_offset=23,
-            )
-        ):
-            self.checker.visit_match(match_node)
-
-    def test_bool(self):
-        """Test that just True causes a message."""
-        code = """
-def f(b: bool):
-    match b:
-        case True:
-            pass
-        """
-        match_node = self.get_match_node(code)
-        with self.assertAddsMessages(
-            MessageTest(
-                msg_id="match-not-exhaustive",
-                line=3,
-                node=match_node,
-                args=([False],),
-                col_offset=4,
-                end_line=5,
-                end_col_offset=16,
-            )
-        ):
-            self.checker.visit_match(match_node)
-
-    def test_bool_or_none(self):
-        """Test that just True causes a message"""
-        code = """
-def f(b: bool | None):
-    match b:
-        case True:
-            pass
-        """
-        match_node = self.get_match_node(code)
-        with self.assertAddsMessages(
-            MessageTest(
-                msg_id="match-not-exhaustive",
-                line=3,
-                node=match_node,
-                args=([False, None],),
-                col_offset=4,
-                end_line=5,
-                end_col_offset=16,
-            )
-        ):
-            self.checker.visit_match(match_node)
-
-    def test_false_or_true_or_none_is_handled(self):
-        """Test that True | False | None is handled."""
-        code = """
-def f(b: bool | None):
-    match b:
-        case True | False | None:
-            pass
-        """
-        match_node = self.get_match_node(code)
-        self.checker.visit_match(match_node)
-        assert len(self.linter.release_messages()) == 0
-
-    def test_bool_or_none_is_handled(self):
-        """Test that bool or None is handled."""
-        code = """
-def f(b: bool | None):
-    match b:
-        case bool(b):
-            pass
-        case None:
-            pass
-        """
-        match_node = self.get_match_node(code)
-        self.checker.visit_match(match_node)
-        assert len(self.linter.release_messages()) == 0
-
-    def test_bool_reassignment_does_not_crash(self):
-        """Test that bool reassignment does not crash."""
-        code = """
-def f(b: bool):
-    match b:
-        case bool:
-            pass
-        """
-        match_node = self.get_match_node(code)
-        with self.assertAddsMessages(
-            MessageTest(
-                msg_id="match-not-exhaustive",
-                line=3,
-                node=match_node,
-                args=([Uninferable],),
-                col_offset=4,
-                end_line=5,
+                end_line=12,
                 end_col_offset=16,
             )
         ):

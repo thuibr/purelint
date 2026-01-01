@@ -174,6 +174,7 @@ class NoMutableMethodChecker(BaseChecker):
     # pylint: enable=rebind
 
     MUTABLE_METHODS = {
+        "add",
         "append",
         "extend",
         "insert",
@@ -253,6 +254,16 @@ class NoDeleteChecker(BaseChecker):
                 self.add_message("delete-used", node=node, args=(target.as_string(),))
 
 
+AnyMatch = (
+    nodes.MatchSingleton
+    | nodes.MatchAs
+    | nodes.MatchClass
+    | nodes.MatchValue
+    | nodes.MatchOr
+    | nodes.Match
+)
+
+
 class ExhaustiveMatchChecker(BaseChecker):
     """All possible types must be checked in a 'match' statement."""
 
@@ -267,161 +278,15 @@ class ExhaustiveMatchChecker(BaseChecker):
     }
     # pylint: enable=rebind
 
-    def _get_subject_annotation(self, node: nodes.Match):
-        subject = node.subject
-        if not isinstance(subject, nodes.Name):
-            return None
-
-        var_name = subject.name
-        parent = node.parent
-
-        while parent and not isinstance(parent, nodes.FunctionDef):
-            parent = parent.parent  # pylint: disable=rebind
-
-        if parent is None:
-            return None
-
-        args = parent.args.args
-        annotations = parent.args.annotations
-
-        for arg, annotation in zip(args, annotations):
-            if arg.name == var_name:
-                return annotation
-
-        return None
-
-    def _extract_union_variants(self, expr) -> set[str]:
-        # Union[Ok, Err]
-        if isinstance(expr, nodes.Subscript) and expr.value.as_string() == "Union":
-            return {elt.as_string() for elt in expr.slice.elts}
-
-        # Ok | Err (Pep 604)
-        if isinstance(expr, nodes.BinOp) and expr.op == "|":
-            return self._extract_union_variants(
-                expr.left
-            ) | self._extract_union_variants(expr.right)
-
-        return set()
-
-    def _enum_variants_from_class(self, cls: nodes.ClassDef) -> set[str]:
-        variants = set()
-
-        for stmt in cls.body:
-            if isinstance(stmt, nodes.Assign):
-                for target in stmt.targets:
-                    if isinstance(target, nodes.AssignName):
-                        variants.add(target.name)
-
-        return variants
-
-    def _resolve_annotation_target(self, annotation: nodes.Name):
-        _, defs = annotation.lookup(annotation.name)
-        if not defs:
-            return None
-
-        definition = defs[0]
-
-        if isinstance(definition, nodes.AssignName):
-            # Result = Union[...]
-            parent = definition.parent
-            if isinstance(parent, nodes.Assign):
-                return parent.value
-
-        if isinstance(definition, nodes.ClassDef):
-            return definition
-
-        return None
-
-    def _get_variants(self, annotation) -> set:
-        variants = set()
-
-        # Union[X, Y] or X | Y
-        if isinstance(annotation, nodes.BinOp) and annotation.op == "|":
-            variants |= self._get_variants(annotation.left)
-            variants |= self._get_variants(annotation.right)
-        elif (
-            isinstance(annotation, nodes.Subscript)
-            and annotation.value.as_string() == "Union"
-        ):
-            for elt in annotation.slice.elts:
-                variants |= self._get_variants(elt)
-        elif isinstance(annotation, nodes.Name):
-            # Check if it's an Enum
-            cls = getattr(annotation, "inferred", lambda: [])()
-            for c in cls:
-                if (
-                    hasattr(c, "locals")
-                    and c.locals != Uninferable
-                    and "__members__" in c.locals
-                ):
-                    members = c.locals["__members__"][0]  # astroid Dict node
-                    for key_node, _ in members.items:
-                        if isinstance(key_node, nodes.Const):
-                            variants.add(key_node.value)
-                elif hasattr(c, "name") and c.name == "bool":
-                    # it's just a dataclass or a normal type
-                    variants.add(True)
-                    variants.add(False)
-                elif hasattr(c, "name"):
-                    variants.add(c.name)
-                else:
-                    raise ValueError("Something went wrong")
-        elif isinstance(annotation, nodes.Const):
-            # None for example
-            variants.add(annotation.value)
-
-        return variants
-
-    def _get_handled_variants(self, node: nodes.Match | nodes.MatchSingleton) -> set:
-        handled = set()
-
-        if isinstance(node, nodes.MatchSingleton):
-            return {node.value}
-
-        for case in node.cases:
-            pat = case.pattern
-
-            if isinstance(pat, nodes.MatchAs) and pat.name is None:
-                handled.add("_")  # wildcard
-            elif isinstance(pat, nodes.MatchClass) and pat.cls.name == "bool":
-                handled.add(True)
-                handled.add(False)
-            elif isinstance(pat, nodes.MatchClass):
-                handled.add(pat.cls.name)
-            elif isinstance(pat, nodes.MatchValue):
-                handled.add(pat.value.as_string().split(".")[-1])
-            elif isinstance(pat, nodes.MatchOr):
-                # case A() | B() for example
-                for subpat in pat.patterns:
-                    handled |= self._get_handled_variants(subpat)
-            elif isinstance(pat, nodes.MatchSingleton):
-                handled.add(pat.value)
-
-        return handled
-
     def visit_match(self, node: nodes.Match):
         """Visit a match in the AST."""
-        annotation = self._get_subject_annotation(node)
-        if annotation is None:
-            return
+        has_default = any(
+            isinstance(case.pattern, nodes.MatchAs) and case.pattern.name is None
+            for case in node.cases
+        )
 
-        variants = self._get_variants(annotation)
-        if not variants:
-            return
-
-        handled = self._get_handled_variants(node)
-
-        if "_" in handled:
-            # wildcard case (_) makes it exhaustive
-            return
-
-        missing = variants - handled
-        if missing:
-            self.add_message(
-                "match-not-exhaustive",
-                node=node,
-                args=(sorted(missing, key=lambda x: (x is None, x)),),
-            )
+        if not has_default:
+            self.add_message("match-not-exhaustive", node=node, args=("_",))
 
 
 class NoIfChecker(BaseChecker):
