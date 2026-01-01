@@ -1,0 +1,21 @@
+[project]
+name = "purelint"
+version = "0.1.0"
+description = "A functional python pylint plugin"
+readme = "README.md"
+authors = [
+    { name = "Tom Huibregtse", email = "thuibr@users.noreply.github.com" }
+]
+requires-python = ">=3.13"
+dependencies = [
+    "pylint>=4.0.4",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[dependency-groups]
+dev = [
+    "pytest>=9.0.2",
+]
