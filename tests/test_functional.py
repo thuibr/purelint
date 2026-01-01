@@ -489,6 +489,27 @@ def f(b: bool):
         ):
             self.checker.visit_match(match_node)
 
+    def test_bool_or_none(self):
+        code = """
+def f(b: bool | None):
+    match b:
+        case True:
+            pass
+        """
+        match_node = self.get_match_node(code)
+        with self.assertAddsMessages(
+            MessageTest(
+                msg_id="match-not-exhaustive",
+                line=3,
+                node=match_node,
+                args=(["bool", None],),
+                col_offset=4,
+                end_line=5,
+                end_col_offset=16,
+            )
+        ):
+            self.checker.visit_match(match_node)
+
 
 class TestNoIfChecker(CheckerTestCase):
     """Test the NoIfChecker."""

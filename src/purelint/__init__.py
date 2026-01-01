@@ -396,7 +396,11 @@ class ExhaustiveMatchChecker(BaseChecker):
 
         missing = variants - handled
         if missing:
-            self.add_message("match-not-exhaustive", node=node, args=(sorted(missing),))
+            self.add_message(
+                "match-not-exhaustive",
+                node=node,
+                args=(sorted(missing, key=lambda x: (x is None, x)),),
+            )
 
 
 class NoIfChecker(BaseChecker):
