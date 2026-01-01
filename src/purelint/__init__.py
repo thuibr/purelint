@@ -221,11 +221,6 @@ class ExhaustiveMatchChecker(BaseChecker):
             "match-not-exhaustive",
             "Raised when a match statement doesn't handle all branches",
         ),
-        "E9009": (
-            "No type annotation: %s",
-            "no-type-annoation",
-            "Raised when a match statement is run on a variable without a type annotation",
-        ),
     }
 
     def _get_subject_annotation(self, node: nodes.Match):
@@ -344,6 +339,23 @@ class ExhaustiveMatchChecker(BaseChecker):
             self.add_message("match-not-exhaustive", node=node, args=(sorted(missing),))
 
 
+class NoIfChecker(BaseChecker):
+    """Forbid using 'if' statements."""
+
+    name = "no-if"
+    msgs = {
+        "E9009": (
+            "Usage of 'if' statements is not allowed",
+            "if-used",
+            "Disallows 'if' statements for pure functional style",
+        )
+    }
+
+    def visit_if(self, node: nodes.If):
+        """Called for each If node in the AST."""
+        self.add_message("if-used", node=node)
+
+
 def register(linter: "PyLinter") -> None:
     linter.register_checker(RebindChecker(linter))
     linter.register_checker(NoAugAssignChecker(linter))
@@ -353,6 +365,7 @@ def register(linter: "PyLinter") -> None:
     linter.register_checker(NoSubscriptAssignmentChecker(linter))
     linter.register_checker(NoDeleteChecker(linter))
     linter.register_checker(ExhaustiveMatchChecker(linter))
+    linter.register_checker(NoIfChecker(linter))
 
 
 def pipe(value, *funcs: Callable):

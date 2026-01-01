@@ -283,7 +283,7 @@ del lst
             self.checker.visit_delete(del_node)
 
 
-class TestExchaustivenessChecker(CheckerTestCase):
+class TestExhaustivenessChecker(CheckerTestCase):
     CHECKER_CLASS = purelint.ExhaustiveMatchChecker
 
     def get_match_node(self, code: str):
@@ -359,3 +359,22 @@ def handle(res: Result):
             )
         ):
             self.checker.visit_match(match_node)  # first match
+
+
+class TestNoIfChecker(CheckerTestCase):
+    CHECKER_CLASS = purelint.NoIfChecker
+
+    def test_no_if(self):
+        node = astroid.parse("""if True:\n    pass""")
+        with self.assertAddsMessages(
+            MessageTest(
+                msg_id="if-used",
+                line=0,
+                node=node,
+                args=None,
+                col_offset=0,
+                end_line=None,
+                end_col_offset=None,
+            )
+        ):
+            self.checker.visit_if(node)
