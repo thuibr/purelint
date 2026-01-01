@@ -386,13 +386,53 @@ def handle(res: Result):
                 msg_id="match-not-exhaustive",
                 line=16,
                 node=match_node,
-                args=(["Err"],),
+                args=(["Union"],),
                 col_offset=4,
                 end_line=18,
                 end_col_offset=20,
             )
         ):
             self.checker.visit_match(match_node)  # first match
+
+    def test_union_and_enum_exhaustive(self):
+        code = """
+    from enum import Enum
+    from dataclasses import dataclass
+    from typing import Union
+
+    class Color(Enum):
+        RED = 1
+        GREEN = 2
+        BLUE = 3
+
+    @dataclass(frozen=True)
+    class Ok:
+        value: int
+
+    @dataclass(frozen=True)
+    class Err:
+        msg: str
+
+    Result = Union[Ok, Err]
+
+    def handle(res: Result | Color):
+        match res:
+            case Ok(value=v):
+                return v
+    """
+        match_node = self.get_match_node(code)
+        with self.assertAddsMessages(
+            MessageTest(
+                msg_id="match-not-exhaustive",
+                line=22,
+                node=match_node,
+                args=(["BLUE", "GREEN", "RED", "Union"],),
+                col_offset=4,
+                end_line=24,
+                end_col_offset=20,
+            )
+        ):
+            self.checker.visit_match(match_node)
 
 
 class TestNoIfChecker(CheckerTestCase):

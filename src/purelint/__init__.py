@@ -332,21 +332,33 @@ class ExhaustiveMatchChecker(BaseChecker):
 
         return None
 
-    def _get_variants(self, annotation):
-        if isinstance(annotation, nodes.Name):
-            target = self._resolve_annotation_target(annotation)
-            if target is None:
-                return set()
+    def _get_variants(self, annotation) -> set:
+        variants = set()
 
-            if isinstance(target, (nodes.Subscript, nodes.BinOp)):
-                # Union / Result alias
-                return self._extract_union_variants(target)
+        # Union[X, Y] or X | Y
+        if isinstance(annotation, nodes.BinOp) and annotation.op == "|":
+            variants |= self._get_variants(annotation.left)
+            variants |= self._get_variants(annotation.right)
+        elif (
+            isinstance(annotation, nodes.Subscript)
+            and annotation.value.as_string() == "Union"
+        ):
+            for elt in annotation.slice.elts:
+                variants |= self._get_variants(elt)
+        elif isinstance(annotation, nodes.Name):
+            # Check if it's an Enum
+            cls = getattr(annotation, "inferred", lambda: [])()
+            for c in cls:
+                if hasattr(c, "locals") and "__members__" in c.locals:
+                    members = c.locals["__members__"][0]  # astroid Dict node
+                    for key_node, _ in members.items:
+                        if isinstance(key_node, nodes.Const):
+                            variants.add(key_node.value)
+                else:
+                    # it's just a dataclass or a normal type
+                    variants.add(c.name if hasattr(c, "name") else annotation.name)
 
-            if isinstance(target, nodes.ClassDef):
-                # Enum
-                return self._enum_variants_from_class(target)
-
-        return set()
+        return variants
 
     def _get_handled_variants(self, node: nodes.Match):
         handled = set()
