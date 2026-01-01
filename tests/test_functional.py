@@ -539,6 +539,28 @@ def f(b: bool | None):
         self.checker.visit_match(match_node)
         assert len(self.linter.release_messages()) == 0
 
+    def test_bool_reassignment_does_not_crash(self):
+        """Test that bool reassignment does not crash."""
+        code = """
+def f(b: bool):
+    match b:
+        case bool:
+            pass
+        """
+        match_node = self.get_match_node(code)
+        with self.assertAddsMessages(
+            MessageTest(
+                msg_id="match-not-exhaustive",
+                line=3,
+                node=match_node,
+                args=([Uninferable],),
+                col_offset=4,
+                end_line=5,
+                end_col_offset=16,
+            )
+        ):
+            self.checker.visit_match(match_node)
+
 
 class TestNoIfChecker(CheckerTestCase):
     """Test the NoIfChecker."""

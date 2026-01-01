@@ -349,7 +349,11 @@ class ExhaustiveMatchChecker(BaseChecker):
             # Check if it's an Enum
             cls = getattr(annotation, "inferred", lambda: [])()
             for c in cls:
-                if hasattr(c, "locals") and "__members__" in c.locals:
+                if (
+                    hasattr(c, "locals")
+                    and c.locals != Uninferable
+                    and "__members__" in c.locals
+                ):
                     members = c.locals["__members__"][0]  # astroid Dict node
                     for key_node, _ in members.items:
                         if isinstance(key_node, nodes.Const):
