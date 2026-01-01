@@ -379,6 +379,9 @@ class ExhaustiveMatchChecker(BaseChecker):
 
             if isinstance(pat, nodes.MatchAs) and pat.name is None:
                 handled.add("_")  # wildcard
+            elif isinstance(pat, nodes.MatchClass) and pat.cls.name == "bool":
+                handled.add(True)
+                handled.add(False)
             elif isinstance(pat, nodes.MatchClass):
                 handled.add(pat.cls.name)
             elif isinstance(pat, nodes.MatchValue):
@@ -387,6 +390,8 @@ class ExhaustiveMatchChecker(BaseChecker):
                 # case A() | B() for example
                 for subpat in pat.patterns:
                     handled |= self._get_handled_variants(subpat)
+            elif isinstance(pat, nodes.MatchSingleton):
+                handled.add(pat.value)
 
         return handled
 
