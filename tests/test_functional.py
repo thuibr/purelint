@@ -1,3 +1,5 @@
+"""Functional tests."""
+
 import astroid
 from pylint.testutils import CheckerTestCase, MessageTest
 
@@ -5,9 +7,12 @@ import purelint
 
 
 class TestRebindChecker(CheckerTestCase):
-    CHECKER_CLASS = purelint.RebindChecker
+    """Test the RebindChecker"""
 
-    def test_assign(self):
+    CHECKER_CLASS = purelint.RebindChecker  # pylint: disable=rebind
+
+    def test_reassignment(self):
+        """Test reassignment"""
         module = astroid.parse("x = 1\nx = 2")
         node1 = module.body[0]
         node2 = module.body[1]
@@ -32,6 +37,7 @@ class TestRebindChecker(CheckerTestCase):
             self.checker.visit_assign(node2)
 
     def test_assign_in_different_scopes(self):
+        """Test assignment in different scopes."""
         node = astroid.parse("""
 def get_db():
     conn = 1
@@ -53,9 +59,12 @@ def toggle():
 
 
 class TestNoAugAssignChecker(CheckerTestCase):
-    CHECKER_CLASS = purelint.NoAugAssignChecker
+    """Test NoAugAssignChecker."""
+
+    CHECKER_CLASS = purelint.NoAugAssignChecker  # pylint: disable=rebind
 
     def test_augassign(self):
+        """Test augmented assignment"""
         node = astroid.parse("x = 1\nx += 1")
         with self.assertAddsMessages(
             MessageTest(
@@ -72,9 +81,12 @@ class TestNoAugAssignChecker(CheckerTestCase):
 
 
 class TestNoSideEffectChecker(CheckerTestCase):
-    CHECKER_CLASS = purelint.NoSideEffectChecker
+    """Test NoSideEffectChecker."""
+
+    CHECKER_CLASS = purelint.NoSideEffectChecker  # pylint: disable=rebind
 
     def test_print_call(self):
+        """Test print call."""
         node = astroid.parse("print('Hello')")
         call_node = node.body[0]
         with self.assertAddsMessages(
@@ -91,6 +103,7 @@ class TestNoSideEffectChecker(CheckerTestCase):
             self.checker.visit_expr(call_node)
 
     def test_with_open(self):
+        """Test with open."""
         node = astroid.parse("with open('file.txt', 'r') as f:\n    f.read()")
         node_with = node.body[0]
         with self.assertAddsMessages(
@@ -108,9 +121,12 @@ class TestNoSideEffectChecker(CheckerTestCase):
 
 
 class TestNoMutableLiteralChecker(CheckerTestCase):
-    CHECKER_CLASS = purelint.NoMutableLiteralChecker
+    """Test NoMutableLiteralChecker."""
+
+    CHECKER_CLASS = purelint.NoMutableLiteralChecker  # pylint: disable=rebind
 
     def test_list_literal(self):
+        """Test list literal."""
         node = astroid.parse("lst = [1, 2, 3]")
         with self.assertAddsMessages(
             MessageTest(
@@ -126,6 +142,7 @@ class TestNoMutableLiteralChecker(CheckerTestCase):
             self.checker.visit_list(node)
 
     def test_list_call(self):
+        """Test list function."""
         node = astroid.parse("lst = list()")
         node_call = node.body[0].value
         with self.assertAddsMessages(
@@ -142,6 +159,7 @@ class TestNoMutableLiteralChecker(CheckerTestCase):
             self.checker.visit_call(node_call)
 
     def test_dict_literal(self):
+        """Test dict literal."""
         node = astroid.parse("d = {'a': 1}")
         with self.assertAddsMessages(
             MessageTest(
@@ -157,6 +175,7 @@ class TestNoMutableLiteralChecker(CheckerTestCase):
             self.checker.visit_dict(node)
 
     def test_dict_call(self):
+        """Test dict function."""
         node = astroid.parse("d = dict()")
         node_call = node.body[0].value
         with self.assertAddsMessages(
@@ -173,6 +192,7 @@ class TestNoMutableLiteralChecker(CheckerTestCase):
             self.checker.visit_call(node_call)
 
     def test_set_literal(self):
+        """Test set literal."""
         node = astroid.parse("s = {'a'}")
         with self.assertAddsMessages(
             MessageTest(
@@ -188,6 +208,7 @@ class TestNoMutableLiteralChecker(CheckerTestCase):
             self.checker.visit_set(node)
 
     def test_set_call(self):
+        """Test set function."""
         node = astroid.parse("s = set()")
         node_call = node.body[0].value
         with self.assertAddsMessages(
@@ -205,9 +226,12 @@ class TestNoMutableLiteralChecker(CheckerTestCase):
 
 
 class TestNoMutableMethodChecker(CheckerTestCase):
-    CHECKER_CLASS = purelint.NoMutableMethodChecker
+    """Test NoMutableMethodChecker."""
+
+    CHECKER_CLASS = purelint.NoMutableMethodChecker  # pylint: disable=rebind
 
     def test_list_pop(self):
+        """Test list popping."""
         node = astroid.parse("""
 lst = [1, 2, 3]
 lst.pop()
@@ -229,9 +253,12 @@ lst.pop()
 
 
 class TestNoSubscriptAssignmentChecker(CheckerTestCase):
-    CHECKER_CLASS = purelint.NoSubscriptAssignmentChecker
+    """Test NoSubscriptAssignmentChecker."""
+
+    CHECKER_CLASS = purelint.NoSubscriptAssignmentChecker  # pylint: disable=rebind
 
     def test_subscript(self):
+        """Test subscripting."""
         node = astroid.parse("""
             import requests
 
@@ -260,9 +287,12 @@ class TestNoSubscriptAssignmentChecker(CheckerTestCase):
 
 
 class TestNoDeleteChecker(CheckerTestCase):
-    CHECKER_CLASS = purelint.NoDeleteChecker
+    """Test the NoDeleteChecker."""
+
+    CHECKER_CLASS = purelint.NoDeleteChecker  # pylint: disable=rebind
 
     def test_del_variable(self):
+        """Test deleting a variable."""
         node = astroid.parse("""
 lst = [1, 2, 3]
 del lst
@@ -284,7 +314,9 @@ del lst
 
 
 class TestExhaustivenessChecker(CheckerTestCase):
-    CHECKER_CLASS = purelint.ExhaustiveMatchChecker
+    """Test the ExhaustivenessChecker."""
+
+    CHECKER_CLASS = purelint.ExhaustiveMatchChecker  # pylint: disable=rebind
 
     def get_match_node(self, code: str):
         """Parse code and return the first Match node in the first function."""
@@ -296,6 +328,7 @@ class TestExhaustivenessChecker(CheckerTestCase):
         return match_node
 
     def test_enum_exhaustive(self):
+        """Test that all values in an enum are checked in a match."""
         code = """
 from enum import Enum
 
@@ -326,6 +359,7 @@ def f(c: Color):
             self.checker.visit_match(match_node)
 
     def test_union_exhaustive(self):
+        """Test that all values in a union are checked in a match"""
         code = """
 from dataclasses import dataclass
 from typing import Union
@@ -362,9 +396,12 @@ def handle(res: Result):
 
 
 class TestNoIfChecker(CheckerTestCase):
-    CHECKER_CLASS = purelint.NoIfChecker
+    """Test the NoIfChecker."""
+
+    CHECKER_CLASS = purelint.NoIfChecker  # pylint: disable=rebind
 
     def test_no_if(self):
+        """ "Test that no ifs are used."""
         node = astroid.parse("""if True:\n    pass""")
         with self.assertAddsMessages(
             MessageTest(

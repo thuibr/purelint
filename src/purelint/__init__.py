@@ -105,17 +105,25 @@ class NoSideEffectChecker(BaseChecker):
         if isinstance(func, nodes.Name) and func.name in self.SIDE_EFFECT_FUNCS:
             self.add_message("side-effect-used", node=node, args=(func.name,))
 
+    def _get_func_name(self, func_node) -> str | None:
+        match func_node:
+            case nodes.Name(name=name):
+                return name
+            case nodes.Attribute(attrname=attrname):
+                return attrname
+            case _:
+                return None
+
     def visit_with(self, node: nodes.With):
         """Visit with calls in the AST."""
         for item in node.items:
             expr = item[0]
-            if (
-                isinstance(expr, nodes.Call)
-                and expr.func.name in self.SIDE_EFFECT_FUNCS
-            ):
-                self.add_message(
-                    "side-effect-used", node=node, args=(expr.func.as_string())
-                )
+            if isinstance(expr, nodes.Call):
+                func_name = self._get_func_name(expr.func)
+                if func_name in self.SIDE_EFFECT_FUNCS:
+                    self.add_message(
+                        "side-effect-used", node=node, args=(expr.func.as_string())
+                    )
 
 
 class NoMutableLiteralChecker(BaseChecker):
@@ -401,7 +409,7 @@ def register(linter: "PyLinter") -> None:
         RebindChecker,
         NoAugAssignChecker,
         NoSideEffectChecker,
-        NoMutableLiteralChecker,
+        # NoMutableLiteralChecker,
         NoMutableMethodChecker,
         NoSubscriptAssignmentChecker,
         NoDeleteChecker,
