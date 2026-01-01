@@ -7,7 +7,28 @@ and see what I can actually build.
 
 ## Features
 
-- `match` exhaustiveness checker
+- `match` exhaustiveness checker, ensuring that all `match` statements have a `_` clause
+  - It is recommended to use something like `assert_never(value)` so that type checkers like `mypy` pick up on any unmatched cases
+    For example:
+    ```python
+    from typing import NoReturn
+
+    def assert_never(value: NoReturn) -> NoReturn:
+        """This should never be called."""
+        assert False, f"Unknown value: {value}"
+
+    def taker(v: Animal | None | int):
+        """Check animal lint"""
+        match v:
+            case None:
+                pass
+            case Animal():
+                pass
+            case int():
+                pass
+            case _:
+                assert_never(v)
+    ```
 
 
 ## Installing
