@@ -1,6 +1,7 @@
 """Functional tests."""
 
 import astroid
+from astroid import Uninferable
 from pylint.testutils import CheckerTestCase, MessageTest
 
 import purelint
@@ -469,6 +470,7 @@ def f_taker(f: E | None):
             self.checker.visit_match(match_node)
 
     def test_bool(self):
+        """Test that just True causes a message."""
         code = """
 def f(b: bool):
     match b:
@@ -490,6 +492,7 @@ def f(b: bool):
             self.checker.visit_match(match_node)
 
     def test_bool_or_none(self):
+        """Test that just True causes a message"""
         code = """
 def f(b: bool | None):
     match b:
@@ -511,6 +514,7 @@ def f(b: bool | None):
             self.checker.visit_match(match_node)
 
     def test_false_or_true_or_none_is_handled(self):
+        """Test that True | False | None is handled."""
         code = """
 def f(b: bool | None):
     match b:
@@ -522,10 +526,25 @@ def f(b: bool | None):
         assert len(self.linter.release_messages()) == 0
 
     def test_bool_or_none_is_handled(self):
+        """Test that bool or None is handled."""
         code = """
 def f(b: bool | None):
     match b:
         case bool(b):
+            pass
+        case None:
+            pass
+        """
+        match_node = self.get_match_node(code)
+        self.checker.visit_match(match_node)
+        assert len(self.linter.release_messages()) == 0
+
+    def test_bool_is_unassigned_value(self):
+        """Test when bool is used incorrectly and is an unassigned value"""
+        code = """
+def f(b: bool | None):
+    match b:
+        case bool:
             pass
         case None:
             pass

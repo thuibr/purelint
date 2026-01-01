@@ -3,7 +3,7 @@
 from functools import reduce
 from typing import TYPE_CHECKING, Callable
 
-from astroid import nodes
+from astroid import Uninferable, nodes
 from pylint.checkers import BaseChecker
 
 if TYPE_CHECKING:
@@ -349,7 +349,10 @@ class ExhaustiveMatchChecker(BaseChecker):
             # Check if it's an Enum
             cls = getattr(annotation, "inferred", lambda: [])()
             for c in cls:
-                if hasattr(c, "locals") and "__members__" in c.locals:
+                if hasattr(c, "locals") and c.locals == Uninferable:
+                    # Leave it to the rest of pylint to catch an undefined variable
+                    continue
+                elif hasattr(c, "locals") and "__members__" in c.locals:
                     members = c.locals["__members__"][0]  # astroid Dict node
                     for key_node, _ in members.items:
                         if isinstance(key_node, nodes.Const):
