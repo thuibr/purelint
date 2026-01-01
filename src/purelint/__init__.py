@@ -260,7 +260,7 @@ class ExhaustiveMatchChecker(BaseChecker):
     name = "exhaustiveness"
     msgs = {
         "E9008": (
-            "Not all values are handles: %s",
+            "Not all values are handled: %s",
             "match-not-exhaustive",
             "Raised when a match statement doesn't handle all branches",
         ),
