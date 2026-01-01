@@ -11,11 +11,7 @@ and see what I can actually build.
   - It is recommended to use something like `assert_never(value)` so that type checkers like `mypy` pick up on any unmatched cases
     For example:
     ```python
-    from typing import NoReturn
-
-    def assert_never(value: NoReturn) -> NoReturn:
-        """This should never be called."""
-        assert False, f"Unknown value: {value}"
+    from purelint import assert_never
 
     def taker(v: Animal | None | int):
         """Check animal lint"""
@@ -38,7 +34,8 @@ and see what I can actually build.
 - A `pipe` tool for immutable transformations on a data structure
   For example:
   ```python
-  # Define a transformation pipeline
+  from purelint import pipe
+  
   sorted_after_deletes = pipe(
       build_tree(values),  # start with tree
       lambda t: delete(t, 2),  # delete 2
