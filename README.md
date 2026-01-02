@@ -11,7 +11,7 @@ and see what I can actually build.
   - It is recommended to use something like `assert_never(value)` so that type checkers like `mypy` pick up on any unmatched cases
     For example:
     ```python
-    from purelint import assert_never
+    from typing import assert_never
 
     def taker(v: Animal | None | int):
         """Check animal lint"""
